@@ -1,4 +1,4 @@
-# "Deactivate" RBAC
+# Remove RBAC in an existing CFK cluster
 
 You can't enable RBAC for a CFK RBAC enabled cluster: 
 
