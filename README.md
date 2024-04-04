@@ -1,17 +1,19 @@
 # Remove RBAC in an existing CFK cluster
 
-You can't enable RBAC for a CFK RBAC enabled cluster: 
+Enable RBAC for an existing CFK cluster is not supported: 
 
 - https://docs.confluent.io/operator/current/co-plan.html#upgrades-and-updates
 
-It would be better phrased: *Enable or disable Confluent RBAC on an existing cluster is unsupported.*
+It would be possibly better phrased: *Enable or disable Confluent RBAC on an existing cluster is unsupported.*
 
 But you can assign ClusterRole to all existing users typically leveraging top groups.
 
-This guides presents an unsupported example of removing RBAC (and LDAP autehntication) for an existing CFK cluster.
+This guides presents though an unsupported example of removing RBAC (and LDAP autehntication) for an existing CFK cluster.
 
 This guide first deploy an RBAC CFK cluster as per reference:
 - https://github.com/confluentinc/confluent-kubernetes-examples/tree/master/security/production-secure-deploy-ldap-rbac-all
+
+And after disables RBAC and LDAP authentication from the CFK cluster.
 
 ## K8s Setup
 
