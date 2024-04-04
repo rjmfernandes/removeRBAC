@@ -6,16 +6,16 @@ Enable RBAC for an existing CFK cluster is not supported:
 
 It would be possibly better phrased: *Enable or disable Confluent RBAC on an existing cluster is unsupported.*
 
-But you can assign ClusterRole to all existing users typically leveraging top groups.
-
-This guides presents though an unsupported example of removing RBAC (and LDAP autehntication) for an existing CFK cluster.
+This guides presents though an unsupported example of removing RBAC (and LDAP autehntication) for an existing CFK cluster. It also shows the alternative option of keeping RBAC but grant anonymous super user access in the cluster.
 
 This guide first deploy an RBAC CFK cluster as per reference:
 - https://github.com/confluentinc/confluent-kubernetes-examples/tree/master/security/production-secure-deploy-ldap-rbac-all
 
 And after disables RBAC and LDAP authentication from the CFK cluster.
 
-## K8s Setup
+## Setup
+
+### K8s Setup
 
 Start k8s cluster:
 
@@ -50,7 +50,7 @@ helm upgrade --install operator confluentinc/confluent-for-kubernetes --namespac
 kubectl get pods --namespace confluent
 ```
 
-## OpenLDAP
+### OpenLDAP
 
 Install and confirm its running:
 
@@ -74,7 +74,7 @@ ldapsearch -LLL -x -H ldap://ldap.confluent.svc.cluster.local:389 -b 'dc=test,dc
 
 Exit.
 
-## Create Certs
+### Create Certs
 
 ```shell
 # Install libraries on Mac OS
@@ -94,7 +94,7 @@ cfssl gencert -ca=$TUTORIAL_HOME/../../assets/certs/generated/ca.pem \
 openssl x509 -in $TUTORIAL_HOME/../../assets/certs/generated/server.pem -text -noout
 ```
 
-## Provide TLS certificates
+### Provide TLS certificates
 
 ```shell
 kubectl create secret generic tls-group1 \
@@ -104,7 +104,7 @@ kubectl create secret generic tls-group1 \
   --namespace confluent
 ```
 
-## Authentication credentials
+### Authentication credentials
 
 ```shell
 kubectl create secret generic credential \
@@ -118,7 +118,7 @@ kubectl create secret generic credential \
   --namespace confluent
 ```
 
-## RBAC and principal credentials
+### RBAC and principal credentials
 
 ```shell
 kubectl create secret generic mds-token \
@@ -159,7 +159,7 @@ kubectl create secret generic rest-credential \
   --namespace confluent
 ```
 
-## Configure CP
+### Configure CP
 
 Copy CP CR file and edit as per your needs:
 
@@ -175,7 +175,7 @@ code $TUTORIAL_HOME/my-confluent-platform-production.yaml
 
 We have in fact that file with final changes as part of our repo [my-confluent-platform-production.yaml](./my-confluent-platform-production.yaml). So we will use it directly on next steps.
 
-## Deploy CP
+### Deploy CP
 
 ```shell
 kubectl apply -f my-confluent-platform-production.yaml --namespace confluent
@@ -289,9 +289,9 @@ And the same once inside the other broker:
 kubectl  exec kafka-1 -it -- bash             
 ```
 
-## Remove RBAC Authorization  and LDAP Authentication
+## Remove RBAC Authorization (and LDAP Authentication)
 
-For removing RBAC we will use now the file [new-my-confluent-platform-production.yaml](./new-my-confluent-platform-production.yaml). Where we have basically commented out all the blocks in the Kafka CR related to RBAC/MDS or LDAP authentication:
+The following would be for removing RBAC. In case you want to try enable super user anonymous go to next section. Here we will use now the file [new-my-confluent-platform-production.yaml](./new-my-confluent-platform-production.yaml). Where we have basically commented out all the blocks in the Kafka CR related to RBAC/MDS or LDAP authentication:
 
 ```yaml
 ---
@@ -396,7 +396,7 @@ After check that all kafka brokers are ready:
 kubectl get pods --namespace confluent
 ```
 
-## Test
+### Test
 
 Now let's confirm everything is working:
 
@@ -418,6 +418,41 @@ kafka-topics --bootstrap-server kafka.confluent.svc.cluster.local:9071 --command
 ```shell
 kafka-console-consumer --bootstrap-server kafka.confluent.svc.cluster.local:9071 --consumer.config /tmp/kafka_no_user.properties --topic test --from-beginning
 ```
+
+## Set anonymous super user
+
+In this case we will add `User:ANONYMOUS`to super.users. And set at least one listener for not using ldap to authenticate. We have done that in [anonymous-confluent-platform-production.yaml](./anonymous-confluent-platform-production.yaml):
+
+```shell
+kubectl apply -f anonymous-confluent-platform-production.yaml --namespace confluent
+k delete pod kafka-0 kafka-1 kafka-2 --namespace confluent
+```
+
+After check that all kafka brokers are ready:
+
+```shell
+kubectl get pods --namespace confluent
+```
+
+Now we confirm as before:
+
+```shell
+kubectl  exec kafka-2 -it -- bash             
+```
+
+```shell
+cat <<EOF > /tmp/kafka_anonymous_user.properties
+security.protocol=SSL
+ssl.truststore.location=/mnt/sslcerts/truststore.p12
+ssl.truststore.password=mystorepassword
+EOF
+kafka-topics --bootstrap-server kafka.confluent.svc.cluster.local:9071 --command-config /tmp/kafka_anonymous_user.properties --list           
+```
+
+```shell
+kafka-console-consumer --bootstrap-server kafka.confluent.svc.cluster.local:9071 --consumer.config /tmp/kafka_anonymous_user.properties --topic test --from-beginning
+```
+
 
 ## Cleanup
 
